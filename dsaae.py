@@ -3,6 +3,7 @@ from __future__ import division
 from __future__ import print_function
 
 import datetime
+import os
 
 import numpy as np
 import tensorflow as tf
@@ -34,9 +35,9 @@ net_metadata = {'input_size': MNIST_DIM * MNIST_DIM,
                 'batch_size': 100,
                 'learning_rate': 0.0001,
                 'training_epoch': 500,
-                'display_step': 10,
+                'save_step': 10,
 
-                'model_path': "./models",
+                'model_path': "./models/",
                 }
 
 # global data place holder for TF nodes
@@ -171,6 +172,8 @@ J = tf.reduce_mean(tf.add(recon_loss, latent_loss))
 # define optimizer
 optimizer = tf.train.AdamOptimizer(net_metadata['learning_rate']).minimize(J)
 
+global_step = tf.contrib.framework.get_or_create_global_step()
+
 
 # Train
 def run(sess, saver, net_metadata, n_samples, mnist, optimizer, J):
@@ -184,15 +187,21 @@ def run(sess, saver, net_metadata, n_samples, mnist, optimizer, J):
             avg_cost += cost / n_samples * bs
 
         # Display logs per epoch step
-        if epoch % net_metadata['display_step'] == 0:
-            saver.save(sess, net_metadata['model_path'])
+        if epoch % net_metadata['save_step'] == 0:
+            saver.save(sess,
+                       os.path.join(model_dir, 'checkpoint'),
+                       global_step=global_step)
             print("Epoch:", '%03d' % (epoch + 1),
                   "avg_cost=", "{:.4f}".format(avg_cost), "time=", datetime.datetime.now())
 
 
 # Main body
+model_dir = net_metadata['model_path']
+if not os.path.exists(model_dir):
+    os.makedirs(model_dir)
+
 saver = tf.train.Saver(max_to_keep=1)
-model_file = tf.train.latest_checkpoint(net_metadata['model_path'])
+model_file = tf.train.latest_checkpoint(model_dir)
 print("model file = %s" % model_file)
 
 mode = "train"
